@@ -16,7 +16,8 @@ export default function MatchResults() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false) // New state
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false); // New state for success message
+  const [apiErrors, setApiErrors] = useState<string[]>([]); // State to store API errors
 
   const processResults = () => {
     const lines = input.trim().split('\n');
@@ -34,6 +35,18 @@ export default function MatchResults() {
       const [teamAName, teamBName, teamAScore, teamBScore] = parts;
       const teamAGoals = parseInt(teamAScore, 10);
       const teamBGoals = parseInt(teamBScore, 10);
+
+      if (teamAName === teamBName) {
+        setError(`Teams cannot have the same name on line ${index + 1}.`);
+        hasError = true;
+        return;
+      }
+
+      if (teamAGoals < 0 || teamBGoals < 0) {
+        setError(`Scores must be positive numbers on line ${index + 1}.`);
+        hasError = true;
+        return;
+      }
 
       if (isNaN(teamAGoals) || isNaN(teamBGoals)) {
         setError(`Invalid scores on line ${index + 1}. Scores must be numbers.`);
@@ -59,8 +72,8 @@ export default function MatchResults() {
     setIsSubmitting(true);
     setError('');
     setSubmitSuccess(false);
-    setShowSuccessMessage(true) // Show the success message
-
+    setShowSuccessMessage(false);
+    setApiErrors([]); // Clear previous API errors
 
     try {
       const response = await api.post('/match/addMatches', results, {
@@ -69,13 +82,22 @@ export default function MatchResults() {
         },
       });
 
-      if (response.status !== 200) {
-        throw new Error(`Failed to submit results. Status code: ${response.status}`);
+      // Handle the response and any error messages
+      if (response.data.errors && response.data.errors.length > 0) {
+        setApiErrors(response.data.errors);
+        setSubmitSuccess(false);
+        return;
       }
 
       setSubmitSuccess(true);
-    } catch (error) {
-      setError('Failed to submit results. Please try again.');
+      setShowSuccessMessage(true); // Show success message
+    } catch (error: any) {
+      if (error.response && error.response.data.errors) {
+        // Display error messages from the API
+        setApiErrors(error.response.data.errors);
+      } else {
+        setError('Failed to submit results. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -91,7 +113,7 @@ export default function MatchResults() {
         placeholder="Enter match results (one per line):&#10;Team A Team B 2 1&#10;Team B Team C 0 3&#10;Team C Team D 1 1"
         rows={10}
         className="w-full p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-    />
+      />
 
       <button
         onClick={processResults}
@@ -134,15 +156,26 @@ export default function MatchResults() {
             {isSubmitting ? 'Submitting...' : 'Submit Results'}
           </button>
 
-          {showSuccessMessage && (
+          {submitSuccess && (
             <div className="mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg relative">
-            <span>Results submitted successfully!</span>
-            <button
-            onClick={() => setShowSuccessMessage(false)}
-            className="absolute top-0 right-0 mt-2 mr-2 text-green-700"
-            >
-            ✕
-            </button>
+              <span>Results submitted successfully!</span>
+              <button
+                onClick={() => setShowSuccessMessage(false)}
+                className="absolute top-0 right-0 mt-2 mr-2 text-green-700"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {apiErrors.length > 0 && (
+            <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+              <p className="font-bold">API Errors:</p>
+              <ul>
+                {apiErrors.map((err, index) => (
+                  <li key={index} className="text-sm">{err}</li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

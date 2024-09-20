@@ -11,6 +11,7 @@ export default function TeamInput() {
   const [input, setInput] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
   const [error, setError] = useState('');
+  const [errorMessages, setErrorMessages] = useState<string[]>([]); // State to store error messages from API
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false); // State for success message
@@ -40,6 +41,12 @@ export default function TeamInput() {
         return;
       }
 
+      if (groupNum !== 1 && groupNum !== 2) {
+        setError(`Invalid group number in line ${index + 1}. Group number must be either 1 or 2.`);
+        hasError = true;
+        return;
+      }
+
       if (isNaN(groupNum)) {
         setError(`Invalid group number in line ${index + 1}. Group number must be a number.`);
         hasError = true;
@@ -64,6 +71,7 @@ export default function TeamInput() {
     setIsSubmitting(true);
     setError('');
     setSubmitSuccess(false);
+    setErrorMessages([]); // Reset error messages
 
     try {
       const response = await api.post('/team/addTeams', teams, {
@@ -73,7 +81,7 @@ export default function TeamInput() {
       });
 
       if (response.status !== 200) {
-        throw new Error(`Failed to submit teams. Status code: ${response.status}`);
+        throw new Error(`Failed to submit teams. Status code: ${response.data}`);
       }
 
       setIsSubmitting(false);
@@ -81,7 +89,14 @@ export default function TeamInput() {
       setShowSuccessMessage(true); // Show success message
     } catch (error) {
       setIsSubmitting(false);
-      setError('Failed to submit teams. Please try again.');
+      const axiosError = error as any;
+
+      if (axiosError.response && axiosError.response.data && axiosError.response.data.errors) {
+        // Display error messages from the API
+        setErrorMessages(axiosError.response.data.errors);
+      } else {
+        setErrorMessages(['An unexpected error occurred. Please try again later.']);
+      }
     }
   };
 
@@ -130,6 +145,15 @@ export default function TeamInput() {
           >
             {isSubmitting ? 'Submitting...' : 'Submit Teams'}
           </button>
+        </div>
+      )}
+      {errorMessages.length > 0 && (
+        <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+          <ul>
+            {errorMessages.map((msg, index) => (
+              <li key={index}>{msg}</li>
+            ))}
+          </ul>
         </div>
       )}
       {showSuccessMessage && (
