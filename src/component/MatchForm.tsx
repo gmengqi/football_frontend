@@ -110,7 +110,7 @@ export default function MatchResults() {
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Enter match results (one per line):&#10;Team A Team B 2 1&#10;Team B Team C 0 3&#10;Team C Team D 1 1"
+        placeholder="Enter match results (one per line):&#10;TeamA TeamB 2 1&#10;TeamB TeamC 0 3&#10;TeamC TeamD 1 1"
         rows={10}
         className="w-full p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
