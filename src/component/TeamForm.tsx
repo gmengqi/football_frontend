@@ -15,6 +15,7 @@ export default function TeamInput() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false); // State for success message
+  const [isProcessClicked, setIsProcessClicked] = useState(false); // State to enable/disable submit button
 
   const processTeams = () => {
     const lines = input.trim().split('\n');
@@ -28,6 +29,7 @@ export default function TeamInput() {
       const parts = line.trim().split(' ');
       if (parts.length !== 3) {
         setError(`Invalid format in line ${index + 1}. Expected: "Team Name Registration Date (dd/MM) Group Number"`);
+        setTeams([]); // Clear previous results if there's an error
         hasError = true;
         return;
       }
@@ -37,18 +39,21 @@ export default function TeamInput() {
 
       if (!dateRegex.test(registrationDate.trim())) {
         setError(`Invalid date format in line ${index + 1}. Date must be in the format dd/MM.`);
+        setTeams([]); // Clear previous results if there's an error
         hasError = true;
         return;
       }
 
       if (groupNum !== 1 && groupNum !== 2) {
         setError(`Invalid group number in line ${index + 1}. Group number must be either 1 or 2.`);
+        setTeams([]); // Clear previous results if there's an error
         hasError = true;
         return;
       }
 
       if (isNaN(groupNum)) {
         setError(`Invalid group number in line ${index + 1}. Group number must be a number.`);
+        setTeams([]); // Clear previous results if there's an error
         hasError = true;
         return;
       }
@@ -58,7 +63,15 @@ export default function TeamInput() {
 
     if (!hasError) {
       setTeams(newTeams);
-      setError('');
+      setError('');      
+      setIsProcessClicked(true); // Enable the submit button
+      setIsSubmitting(false); 
+    } else {
+      setIsProcessClicked(false); // Disable submit button if there's an error
+      // Remove the error message after 3 seconds
+      setTimeout(() => {
+        setError('');
+      }, 3000);
     }
   };
 
@@ -89,22 +102,25 @@ export default function TeamInput() {
         setSubmitSuccess(false);
         return;
       }
-
+            
       setIsSubmitting(false);
       setSubmitSuccess(true);
       setShowSuccessMessage(true); // Show success message
-    
+
+      // Automatically hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000); // Hide message after 3 seconds
+
     } catch (error) {
       setIsSubmitting(false);
-      // const axiosError = error as any;
-
-      // if (axiosError.response && axiosError.response.data && axiosError.response.data.errors) {
-      //   // Display error messages from the API
-      //   setErrorMessages(axiosError.response.data.errors);
-      // } else {
-        setErrorMessages(['An unexpected error occurred. Please try again later.']);
-      }
-    };
+      setErrorMessages(['An unexpected error occurred. Please try again later.']);
+      // Automatically hide error message after 3 seconds
+      setTimeout(() => {
+        setErrorMessages([]);
+      }, 3000);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">
@@ -146,7 +162,7 @@ export default function TeamInput() {
           </table>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={!isProcessClicked || isSubmitting}
             className="mt-4 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
           >
             {isSubmitting ? 'Submitting...' : 'Submit Teams'}

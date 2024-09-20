@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import api from '../api'; // Import Axios instance
+import api from '../api'; 
 
 interface MatchResult {
   teamAName: string;
@@ -16,8 +16,8 @@ export default function MatchResults() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false); // New state for success message
-  const [apiErrors, setApiErrors] = useState<string[]>([]); // State to store API errors
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false); 
+  const [isProcessClicked, setIsProcessClicked] = useState(false); 
 
   const processResults = () => {
     const lines = input.trim().split('\n');
@@ -29,6 +29,7 @@ export default function MatchResults() {
       if (parts.length !== 4) {
         setError(`Invalid format on line ${index + 1}. Expected: "Team A Team B Score A Score B"`);
         hasError = true;
+        setResults([]); // Clear previous results if there's an error
         return;
       }
 
@@ -36,21 +37,26 @@ export default function MatchResults() {
       const teamAGoals = parseInt(teamAScore, 10);
       const teamBGoals = parseInt(teamBScore, 10);
 
-      if (teamAName === teamBName) {
-        setError(`Teams cannot have the same name on line ${index + 1}.`);
-        hasError = true;
-        return;
-      }
-
-      if (teamAGoals < 0 || teamBGoals < 0) {
-        setError(`Scores must be positive numbers on line ${index + 1}.`);
-        hasError = true;
-        return;
-      }
-
       if (isNaN(teamAGoals) || isNaN(teamBGoals)) {
         setError(`Invalid scores on line ${index + 1}. Scores must be numbers.`);
         hasError = true;
+        setResults([]); // Clear previous results if there's an error
+        return;
+      }
+
+      // Check if the team names are the same
+      if (teamAName === teamBName) {
+        setError(`Team names cannot be the same on line ${index + 1}.`);
+        hasError = true;
+        setResults([]); // Clear previous results if there's an error
+        return;
+      }
+
+      // Check if the goals are negative
+      if (teamAGoals < 0 || teamBGoals < 0) {
+        setError(`Scores cannot be negative on line ${index + 1}.`);
+        hasError = true;
+        setResults([]); // Clear previous results if there's an error
         return;
       }
 
@@ -60,6 +66,9 @@ export default function MatchResults() {
     if (!hasError) {
       setResults(newResults);
       setError('');
+      setIsProcessClicked(true); // Enable the submit button
+    } else {
+      setIsProcessClicked(false); // Disable submit button if there's an error
     }
   };
 
@@ -72,8 +81,7 @@ export default function MatchResults() {
     setIsSubmitting(true);
     setError('');
     setSubmitSuccess(false);
-    setShowSuccessMessage(false);
-    setApiErrors([]); // Clear previous API errors
+    setShowSuccessMessage(true); // Show the success message
 
     try {
       const response = await api.post('/match/addMatches', results, {
@@ -82,22 +90,20 @@ export default function MatchResults() {
         },
       });
 
-      // Handle the response and any error messages
-      if (response.data.errors && response.data.errors.length > 0) {
-        setApiErrors(response.data.errors);
-        setSubmitSuccess(false);
-        return;
+      if (response.status !== 200) {
+        throw new Error(`Failed to submit results. Status code: ${response.status}`);
       }
 
       setSubmitSuccess(true);
-      setShowSuccessMessage(true); // Show success message
-    } catch (error: any) {
-      if (error.response && error.response.data.errors) {
-        // Display error messages from the API
-        setApiErrors(error.response.data.errors);
-      } else {
-        setError('Failed to submit results. Please try again.');
-      }
+      setResults([]); // Clear results after successful submission
+
+      // Automatically hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000); // Hide message after 3 seconds (3000 milliseconds)
+      
+    } catch (error) {
+      setError('Failed to submit results. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -110,7 +116,7 @@ export default function MatchResults() {
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Enter match results (one per line):&#10;TeamA TeamB 2 1&#10;TeamB TeamC 0 3&#10;TeamC TeamD 1 1"
+        placeholder="Enter match results (one per line):&#10;Team A Team B 2 1&#10;Team B Team C 0 3&#10;Team C Team D 1 1"
         rows={10}
         className="w-full p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
@@ -148,15 +154,15 @@ export default function MatchResults() {
 
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={!isProcessClicked || isSubmitting}
             className={`mt-6 w-full text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform ${
-              isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 hover:scale-105'
+              isSubmitting || !isProcessClicked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 hover:scale-105'
             }`}
           >
             {isSubmitting ? 'Submitting...' : 'Submit Results'}
           </button>
 
-          {submitSuccess && (
+          {showSuccessMessage && (
             <div className="mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg relative">
               <span>Results submitted successfully!</span>
               <button
@@ -165,17 +171,6 @@ export default function MatchResults() {
               >
                 ✕
               </button>
-            </div>
-          )}
-
-          {apiErrors.length > 0 && (
-            <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
-              <p className="font-bold">API Errors:</p>
-              <ul>
-                {apiErrors.map((err, index) => (
-                  <li key={index} className="text-sm">{err}</li>
-                ))}
-              </ul>
             </div>
           )}
         </div>
