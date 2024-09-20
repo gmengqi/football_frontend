@@ -84,21 +84,27 @@ export default function TeamInput() {
         throw new Error(`Failed to submit teams. Status code: ${response.data}`);
       }
 
+      if (response.data.errors && response.data.errors.length > 0) {
+        setErrorMessages(response.data.errors);
+        setSubmitSuccess(false);
+        return;
+      }
+
       setIsSubmitting(false);
       setSubmitSuccess(true);
       setShowSuccessMessage(true); // Show success message
+    
     } catch (error) {
       setIsSubmitting(false);
-      const axiosError = error as any;
+      // const axiosError = error as any;
 
-      if (axiosError.response && axiosError.response.data && axiosError.response.data.errors) {
-        // Display error messages from the API
-        setErrorMessages(axiosError.response.data.errors);
-      } else {
+      // if (axiosError.response && axiosError.response.data && axiosError.response.data.errors) {
+      //   // Display error messages from the API
+      //   setErrorMessages(axiosError.response.data.errors);
+      // } else {
         setErrorMessages(['An unexpected error occurred. Please try again later.']);
       }
-    }
-  };
+    };
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">

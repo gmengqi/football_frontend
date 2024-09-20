@@ -109,7 +109,7 @@ export default function TeamDetails() {
     };
 
     try {
-      const response = await api.put(`/team/updateTeam`, dto);
+      const response = await api.put(`/team/updateTeam/EDIT`, dto);
       if (response.status === 200) {
         setEditMode(false);
         fetchTeamDetails(); // Refresh the team details after successful update
